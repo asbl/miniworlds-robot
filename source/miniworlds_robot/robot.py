@@ -43,6 +43,11 @@ class Robot:
         return name in self._world.robot_abilities
 
     def _step(self):
+        destination = self._actor.sensor_manager.get_destination(
+            self._actor.position, self._actor.direction, 1
+        )
+        if self._world.is_blocked(destination):
+            return self._actor
         self._actor.robot_steps += 1
         return self._actor.move(1)
 

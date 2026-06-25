@@ -20,5 +20,6 @@ robot = Loader.load_robot("standard", world, position=(1, 1))
 robot.step()
 robot.turn_left()
 
+print(world.is_solved())
 world.run()
 ```

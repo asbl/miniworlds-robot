@@ -17,6 +17,6 @@ PYTHONPATH=libraries/miniworlds_robot/source:source python libraries/miniworlds_
 - `04_loops.py`: loops repeat a known pattern
 - `05_conditions.py`: `if` reacts to what the robot senses
 
-Every file ends with `world.run()`. It returns `True` when the current world
-matches the target configuration, otherwise `False`.
-
+Every file ends with `world.run()` to start the Miniworlds window. Use
+`world.is_solved()` to check whether the current world matches the target
+configuration.

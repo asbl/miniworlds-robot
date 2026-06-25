@@ -36,11 +36,8 @@ class RobotWorld(TiledWorld):
     def add_object(self, actor_cls: Type[Actor], position: Position) -> Actor:
         return actor_cls(position, world=self)
 
-    def run(self, *args, **kwargs) -> bool:
-        """Return whether the current world state matches the task target."""
-        return self.is_solved()
-
     def is_solved(self) -> bool:
+        """Return whether the current world state matches the task target."""
         target = self.robot_config.target
         if target.robot_position is not None and self._robot_positions() != (target.robot_position,):
             return False
@@ -102,6 +99,7 @@ class RobotObject(Actor):
     def __init__(self, position: Position = (0, 0), *, world=None):
         super().__init__(position, world=world)
         self.size = (1, 1)
+        self.is_blocking = self.blocks_robot
         self.add_costume(self.costume_color)
 
 

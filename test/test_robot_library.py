@@ -1,6 +1,8 @@
+from unittest.mock import patch
+
 import pytest
 
-from miniworlds import Actor
+from miniworlds import Actor, TiledWorld
 from miniworlds_robot import Leaf, Loader, ObjectConfig, RobotConfig, WorldConfig, load_robot, load_world
 
 
@@ -54,6 +56,45 @@ def test_loader_places_configured_world_objects():
     assert world.is_blocked((1, 1))
     assert world.is_blocked((2, 1))
     assert not world.is_blocked((3, 1))
+
+
+def test_robot_cannot_step_onto_a_blocking_object_or_count_the_attempt():
+    world = load_world("obstacle_garden")
+    robot = load_robot(world=world, position=(2, 1))
+
+    robot.step()
+
+    assert robot._actor.position == (2, 1)
+    assert robot._actor.robot_steps == 0
+
+
+def test_robot_cannot_leave_the_world_or_count_the_attempt():
+    world = load_world(WorldConfig(name="small", columns=2, rows=2))
+    robot = load_robot(RobotConfig(name="left", direction=-90), world, position=(0, 0))
+
+    robot.step()
+
+    assert robot._actor.position == (0, 0)
+    assert robot._actor.robot_steps == 0
+
+
+def test_successful_step_moves_robot_and_counts_once():
+    world = load_world("basic")
+    robot = load_robot(world=world, position=(0, 0))
+
+    robot.step()
+
+    assert robot._actor.position == (1, 0)
+    assert robot._actor.robot_steps == 1
+
+
+def test_run_keeps_tiled_world_runtime_behavior():
+    world = load_world("basic")
+
+    with patch.object(TiledWorld, "run") as run:
+        world.run(fullscreen=True)
+
+    run.assert_called_once_with(fullscreen=True)
 
 
 def test_unknown_configs_raise_clear_errors():
