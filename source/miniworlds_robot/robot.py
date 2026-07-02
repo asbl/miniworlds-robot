@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from miniworlds import Actor
 
+import miniworlds_robot.visuals as visuals
 from miniworlds_robot.config import RobotConfig
 from miniworlds_robot.world import Leaf, Position, RobotWorld
 
@@ -11,9 +12,21 @@ class _RobotBody(Actor):
         super().__init__(position, world=world)
         self.is_robot_body = True
         self.robot_steps = 0
+        self.robot_config = config
         self.size = (1, 1)
         self.direction = config.direction
-        self.add_costume(config.costume)
+        self.apply_robot_visual_mode(world.debug)
+
+    def apply_robot_visual_mode(self, debug: bool) -> None:
+        self.costume_manager.reset()
+        if debug:
+            self.add_costume(self.robot_config.costume)
+            self.orientation = 0
+            return
+        costume = self.add_costume(visuals.robot_asset_path(self.robot_config.name))
+        costume.is_scaled = True
+        costume.is_rotatable = True
+        self.orientation = -90
 
 
 class Robot:

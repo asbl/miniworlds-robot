@@ -35,6 +35,7 @@ class WorldConfig:
     rows: int = 10
     tile_size: int = 40
     background: Color = (221, 236, 203, 255)
+    debug: bool = False
     objects: tuple[ObjectConfig, ...] = ()
     target: TargetConfig = field(default_factory=TargetConfig)
     robot_abilities: frozenset[str] = field(

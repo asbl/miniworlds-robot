@@ -4,6 +4,8 @@ from typing import Tuple, Type
 
 from miniworlds import Actor, TiledWorld
 
+from miniworlds.appearances.managers.image_manager import ImageManager
+import miniworlds_robot.visuals as visuals
 from miniworlds_robot.config import WorldConfig
 
 
@@ -19,10 +21,42 @@ class RobotWorld(TiledWorld):
         columns = overrides.pop("columns", config.columns)
         rows = overrides.pop("rows", config.rows)
         tile_size = overrides.pop("tile_size", config.tile_size)
+        debug = overrides.pop("debug", config.debug)
         super().__init__(columns, rows, tile_size=tile_size, **overrides)
         self.tile_size = tile_size
-        self.grid = True
-        self.background.fill_color = config.background
+        self._robot_debug = False
+        self.debug = debug
+
+    @property
+    def debug(self) -> bool:
+        return self._robot_debug
+
+    @debug.setter
+    def debug(self, value: bool) -> None:
+        if not isinstance(value, bool):
+            raise TypeError(f"debug must be bool, got {type(value).__name__}: {value!r}")
+        self._robot_debug = value
+        self._apply_visual_mode()
+
+    def _apply_visual_mode(self) -> None:
+        if self.debug:
+            self.background = self.robot_config.background
+            self.grid = True
+        else:
+            self.grid = False
+            self.background.image_manager.replace_image(
+                visuals.make_world_background(
+                    self.width, self.height, self.tile_size
+                ),
+                ImageManager.SURFACE,
+                None,
+            )
+            self.background.is_scaled = True
+            self.background.set_dirty("all", self.background.LOAD_NEW_IMAGE)
+        for actor in self.actors:
+            apply_visual_mode = getattr(actor, "apply_robot_visual_mode", None)
+            if apply_visual_mode:
+                apply_visual_mode(self.debug)
 
     @property
     def robot_abilities(self) -> frozenset[str]:
@@ -95,27 +129,39 @@ class RobotObject(Actor):
     collectable = False
     costume_color = (255, 255, 255, 255)
     robot_object_kind = "object"
+    normal_costume_factory = None
 
     def __init__(self, position: Position = (0, 0), *, world=None):
         super().__init__(position, world=world)
         self.size = (1, 1)
         self.is_blocking = self.blocks_robot
-        self.add_costume(self.costume_color)
+        self.apply_robot_visual_mode(getattr(world, "debug", False))
+
+    def apply_robot_visual_mode(self, debug: bool) -> None:
+        self.costume_manager.reset()
+        if debug or self.normal_costume_factory is None:
+            self.add_costume(self.costume_color)
+            return
+        costume = self.add_costume(self.normal_costume_factory(self.world.tile_size))
+        costume.is_scaled = True
 
 
 class Tree(RobotObject):
     blocks_robot = True
     costume_color = (33, 120, 58, 255)
     robot_object_kind = "tree"
+    normal_costume_factory = staticmethod(visuals.make_tree_surface)
 
 
 class Mushroom(RobotObject):
     blocks_robot = True
     costume_color = (192, 43, 48, 255)
     robot_object_kind = "mushroom"
+    normal_costume_factory = staticmethod(visuals.make_mushroom_surface)
 
 
 class Leaf(RobotObject):
     collectable = True
     costume_color = (74, 159, 65, 255)
     robot_object_kind = "leaf"
+    normal_costume_factory = staticmethod(visuals.make_leaf_surface)

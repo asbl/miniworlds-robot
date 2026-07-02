@@ -3,8 +3,8 @@ from __future__ import annotations
 from miniworlds_robot.loader import load_robot, load_world
 
 
-def task(name: str, robot: str = "standard"):
-    world = load_world(name)
+def task(name: str, robot: str = "standard", *, debug: bool = False):
+    world = load_world(name, debug=debug)
     robot_actor = load_robot(robot, world, position=_start_position(name))
     return world, robot_actor
 
