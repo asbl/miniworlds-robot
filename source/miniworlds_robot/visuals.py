@@ -54,26 +54,21 @@ def make_robot_surface(name: str, tile_size: int) -> pygame.Surface:
 
 def make_world_background(width: int, height: int, tile_size: int) -> pygame.Surface:
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
-    surface.fill((139, 178, 110, 255))
     overlay = pygame.Surface((width, height), pygame.SRCALPHA)
-    track_long = pygame.transform.smoothscale(
-        _load_asset_surface("track_long.png"),
-        (int(tile_size * 0.70), int(tile_size * 0.34)),
-    )
-    track_short = pygame.transform.smoothscale(
-        _load_asset_surface("track_short.png"),
-        (int(tile_size * 0.44), int(tile_size * 0.34)),
-    )
-    track_long.set_alpha(42)
-    track_short.set_alpha(36)
+    light = (149, 187, 118, 255)
+    dark = (131, 170, 102, 255)
     for y in range(0, height, tile_size):
         for x in range(0, width, tile_size):
-            tile_index = x // tile_size + y // tile_size
             rect = pygame.Rect(x, y, tile_size, tile_size)
+            col = x // tile_size
+            row = y // tile_size
+            color = light if (col + row) % 2 == 0 else dark
+            pygame.draw.rect(surface, color, rect)
+            tile_index = col + row
             if tile_index % 3 == 0:
                 pygame.draw.circle(
                     overlay,
-                    (171, 205, 132, 58),
+                    (171, 205, 132, 70),
                     (
                         int(rect.centerx - tile_size * 0.16),
                         int(rect.centery - tile_size * 0.12),
@@ -83,21 +78,13 @@ def make_world_background(width: int, height: int, tile_size: int) -> pygame.Sur
             if tile_index % 5 == 2:
                 pygame.draw.circle(
                     overlay,
-                    (91, 134, 79, 44),
+                    (91, 134, 79, 56),
                     (
                         int(rect.centerx + tile_size * 0.18),
                         int(rect.centery + tile_size * 0.14),
                     ),
                     max(2, tile_size // 9),
                 )
-            if tile_index % 6 == 0:
-                track = track_long
-            elif tile_index % 6 == 3:
-                track = track_short
-            else:
-                continue
-            track_rect = track.get_rect(center=rect.center)
-            overlay.blit(track, track_rect)
     surface.blit(overlay, (0, 0))
     return surface
 
