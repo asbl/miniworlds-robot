@@ -1,3 +1,6 @@
+import io
+import sys
+import types
 from unittest.mock import patch
 
 import pytest
@@ -186,6 +189,31 @@ def test_world_config_can_be_loaded_from_github_blob_url():
         "https://raw.githubusercontent.com/example/miniworlds-robot-worlds/main/worlds/remote.json",
         timeout=10,
     )
+
+
+def test_world_config_url_loader_uses_pyodide_open_url_when_available():
+    calls = []
+    pyodide = types.ModuleType("pyodide")
+    http = types.ModuleType("pyodide.http")
+
+    def open_url(url):
+        calls.append(url)
+        return io.StringIO('{"name": "pyodide-world", "columns": 4, "rows": 2}')
+
+    http.open_url = open_url
+
+    with patch.dict(sys.modules, {"pyodide": pyodide, "pyodide.http": http}):
+        with patch("miniworlds_robot.loader.urlopen") as urlopen:
+            config = load_world_config_from_url(
+                "https://github.com/example/miniworlds-robot-worlds/blob/main/worlds/remote.json"
+            )
+
+    assert config.name == "pyodide-world"
+    assert config.columns == 4
+    assert calls == [
+        "https://raw.githubusercontent.com/example/miniworlds-robot-worlds/main/worlds/remote.json"
+    ]
+    urlopen.assert_not_called()
 
 
 def test_world_can_be_loaded_from_published_github_repository():

@@ -140,14 +140,24 @@ def world_config_from_json(data: str | bytes | dict[str, Any]) -> WorldConfig:
     return replace(config, **changes)
 
 
+def _read_url_text(url: str) -> str:
+    try:
+        from pyodide.http import open_url
+    except ImportError:
+        with urlopen(url, timeout=10) as response:
+            return response.read().decode("utf-8")
+
+    with open_url(url) as response:
+        return response.read()
+
+
 def load_world_config_from_url(url: str) -> WorldConfig:
     """Load a RobotWorld JSON config from an HTTP(S) URL.
 
     GitHub ``/blob/`` URLs are accepted and converted to their raw equivalent.
     """
     raw_url = _github_blob_to_raw_url(url)
-    with urlopen(raw_url, timeout=10) as response:
-        return world_config_from_json(response.read().decode("utf-8"))
+    return world_config_from_json(_read_url_text(raw_url))
 
 
 def _resolve_world_config(config: str | WorldConfig) -> WorldConfig:
