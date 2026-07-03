@@ -11,7 +11,14 @@ from miniworlds_robot import (
     WorldConfig,
     load_robot,
     load_world,
+    load_world_config_from_url,
+    world_config_from_json,
     task,
+)
+
+
+REMOTE_WORLDS_BASE_URL = (
+    "https://github.com/asbl/miniworlds-robot-worlds/blob/main/worlds"
 )
 
 
@@ -39,6 +46,13 @@ def test_loader_creates_world_and_robot_with_restricted_default_api():
         robot.position
 
     assert all(isinstance(actor, Actor) for actor in world.actors)
+
+
+def test_loader_uses_explicit_empty_world_for_robot():
+    world = load_world("loop_square")
+    robot = load_robot(world=world, position=(1, 1))
+
+    assert robot._actor in world.actors
 
 
 def test_normal_mode_uses_graphical_robot_and_tiles():
@@ -129,6 +143,77 @@ def test_loader_places_configured_world_objects():
     assert world.is_blocked((1, 1))
     assert world.is_blocked((2, 1))
     assert not world.is_blocked((3, 1))
+
+
+def test_world_config_can_be_loaded_from_json():
+    config = world_config_from_json(
+        {
+            "name": "json-world",
+            "columns": 4,
+            "rows": 3,
+            "objects": [{"kind": "tree", "position": [2, 1]}],
+            "target": {"robot_position": [1, 1], "robot_steps": 2},
+            "robot_abilities": ["step", "position"],
+        }
+    )
+    world = load_world(config)
+
+    assert world.columns == 4
+    assert world.rows == 3
+    assert world.is_blocked((2, 1))
+    assert world.robot_abilities == frozenset({"step", "position"})
+
+
+def test_world_config_can_be_loaded_from_github_blob_url():
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self):
+            return b'{"name": "remote-world", "columns": 3, "rows": 2}'
+
+    with patch("miniworlds_robot.loader.urlopen", return_value=Response()) as urlopen:
+        config = load_world_config_from_url(
+            "https://github.com/example/miniworlds-robot-worlds/blob/main/worlds/remote.json"
+        )
+
+    assert config.name == "remote-world"
+    assert config.columns == 3
+    urlopen.assert_called_once_with(
+        "https://raw.githubusercontent.com/example/miniworlds-robot-worlds/main/worlds/remote.json",
+        timeout=10,
+    )
+
+
+def test_world_can_be_loaded_from_published_github_repository():
+    world = load_world(f"{REMOTE_WORLDS_BASE_URL}/04-loops/loops_03_square.json")
+
+    assert world.robot_config.name == "loops_03_square"
+    assert world.columns == 6
+    assert world.rows == 6
+    assert world.robot_config.target.robot_steps == 8
+
+
+def test_published_github_repository_contains_concept_worlds():
+    samples = {
+        "01-sequences/sequence_01_straight_line.json": "sequence_01_straight_line",
+        "02-variables/variables_01_step_count.json": "variables_01_step_count",
+        "03-functions/functions_01_double_step.json": "functions_01_double_step",
+        "04-loops/loops_01_four_steps.json": "loops_01_four_steps",
+        "05-nested-loops/nested_loops_01_two_rows.json": "nested_loops_01_two_rows",
+        "06-if-statements/if_01_leaf_here.json": "if_01_leaf_here",
+        "07-while-loops/while_01_until_x.json": "while_01_until_x",
+        "08-boolean-logic/boolean_01_leaf_and_position.json": (
+            "boolean_01_leaf_and_position"
+        ),
+    }
+
+    for path, expected_name in samples.items():
+        config = load_world_config_from_url(f"{REMOTE_WORLDS_BASE_URL}/{path}")
+        assert config.name == expected_name
 
 
 def test_robot_cannot_step_onto_a_blocking_object_or_count_the_attempt():

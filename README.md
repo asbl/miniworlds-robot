@@ -23,3 +23,14 @@ robot.turn_left()
 print(world.is_solved())
 world.run()
 ```
+
+Worlds can also be loaded from JSON URLs, including GitHub `blob` links:
+
+```python
+from miniworlds_robot import load_robot, load_world
+
+world = load_world(
+    "https://github.com/USER/miniworlds-robot-worlds/blob/main/worlds/loop_square.json"
+)
+robot = load_robot(world=world, position=(1, 1))
+```
