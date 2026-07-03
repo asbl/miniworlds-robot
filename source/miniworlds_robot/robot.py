@@ -23,10 +23,12 @@ class _RobotBody(Actor):
             self.add_costume(self.robot_config.costume)
             self.orientation = 0
             return
-        costume = self.add_costume(visuals.robot_asset_path(self.robot_config.name))
+        costume = self.add_costume(
+            visuals.make_robot_surface(self.robot_config.name, self.world.tile_size)
+        )
         costume.is_scaled = True
-        costume.is_rotatable = True
-        self.orientation = -90
+        costume.is_rotatable = False
+        self.orientation = 0
 
 
 class Robot:

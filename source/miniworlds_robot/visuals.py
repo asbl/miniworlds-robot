@@ -8,11 +8,11 @@ import pygame
 ASSET_PACKAGE = "miniworlds_robot.assets.kenney_robot_pack"
 
 ROBOT_ASSETS = {
-    "standard": "robot_red.png",
-    "red": "robot_red.png",
-    "blue": "robot_blue.png",
-    "green": "robot_green.png",
-    "yellow": "robot_yellow.png",
+    "standard": "robot_redBody.png",
+    "red": "robot_redBody.png",
+    "blue": "robot_blueBody.png",
+    "green": "robot_greenBody.png",
+    "yellow": "robot_yellowBody.png",
 }
 
 
@@ -28,14 +28,34 @@ def asset_path(filename: str) -> str:
 
 
 def robot_asset_path(name: str) -> str:
-    return asset_path(ROBOT_ASSETS.get(name, "robot_red.png"))
+    return asset_path(ROBOT_ASSETS.get(name, "robot_redBody.png"))
+
+
+def make_robot_surface(name: str, tile_size: int) -> pygame.Surface:
+    surface = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+    body = _load_asset_surface(ROBOT_ASSETS.get(name, "robot_redBody.png"))
+    tracks = _load_asset_surface("tracks_short1.png")
+    body_width = int(tile_size * 0.94)
+    body_height = int(body.get_height() * body_width / body.get_width())
+    body = pygame.transform.smoothscale(body, (body_width, body_height))
+    tracks_width = int(tile_size * 0.70)
+    tracks_height = int(tracks.get_height() * tracks_width / tracks.get_width())
+    tracks = pygame.transform.smoothscale(tracks, (tracks_width, tracks_height))
+    tracks_rect = tracks.get_rect(
+        center=(tile_size // 2, int(tile_size * 0.78))
+    )
+    body_rect = body.get_rect(
+        center=(tile_size // 2, int(tile_size * 0.43))
+    )
+    surface.blit(tracks, tracks_rect)
+    surface.blit(body, body_rect)
+    return surface
 
 
 def make_world_background(width: int, height: int, tile_size: int) -> pygame.Surface:
     surface = pygame.Surface((width, height), pygame.SRCALPHA)
-    surface.fill((147, 187, 112, 255))
-    light = (168, 204, 132, 255)
-    dark = (126, 166, 96, 255)
+    surface.fill((139, 178, 110, 255))
+    overlay = pygame.Surface((width, height), pygame.SRCALPHA)
     track_long = pygame.transform.smoothscale(
         _load_asset_surface("track_long.png"),
         (int(tile_size * 0.70), int(tile_size * 0.34)),
@@ -44,22 +64,41 @@ def make_world_background(width: int, height: int, tile_size: int) -> pygame.Sur
         _load_asset_surface("track_short.png"),
         (int(tile_size * 0.44), int(tile_size * 0.34)),
     )
+    track_long.set_alpha(42)
+    track_short.set_alpha(36)
     for y in range(0, height, tile_size):
         for x in range(0, width, tile_size):
             tile_index = x // tile_size + y // tile_size
-            color = light if tile_index % 2 == 0 else dark
             rect = pygame.Rect(x, y, tile_size, tile_size)
-            pygame.draw.rect(surface, color, rect)
-            pygame.draw.rect(surface, (105, 145, 83, 90), rect, 1)
-            if tile_index % 4 == 0:
+            if tile_index % 3 == 0:
+                pygame.draw.circle(
+                    overlay,
+                    (171, 205, 132, 58),
+                    (
+                        int(rect.centerx - tile_size * 0.16),
+                        int(rect.centery - tile_size * 0.12),
+                    ),
+                    max(2, tile_size // 7),
+                )
+            if tile_index % 5 == 2:
+                pygame.draw.circle(
+                    overlay,
+                    (91, 134, 79, 44),
+                    (
+                        int(rect.centerx + tile_size * 0.18),
+                        int(rect.centery + tile_size * 0.14),
+                    ),
+                    max(2, tile_size // 9),
+                )
+            if tile_index % 6 == 0:
                 track = track_long
-            elif tile_index % 4 == 2:
+            elif tile_index % 6 == 3:
                 track = track_short
             else:
                 continue
             track_rect = track.get_rect(center=rect.center)
-            track.set_alpha(55)
-            surface.blit(track, track_rect)
+            overlay.blit(track, track_rect)
+    surface.blit(overlay, (0, 0))
     return surface
 
 

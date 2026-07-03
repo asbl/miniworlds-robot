@@ -31,6 +31,12 @@ def current_costume_source(actor):
     ]["source"]
 
 
+def current_costume_type(actor):
+    return actor.costume.image_manager.images_list[
+        actor.costume.image_manager.image_index
+    ]["type"]
+
+
 def current_background_source(world):
     return world.background.image_manager.images_list[
         world.background.image_manager.image_index
@@ -65,7 +71,8 @@ def test_normal_mode_uses_graphical_robot_and_tiles():
     assert world.debug is False
     assert world.grid is False
     assert current_background_source(world) is None
-    assert current_costume_source(robot._actor).endswith("robot_blue.png")
+    assert current_costume_source(robot._actor) is None
+    assert current_costume_type(robot._actor) == 3
 
 
 def test_debug_mode_keeps_original_block_visuals():
@@ -106,7 +113,8 @@ def test_visual_mode_toggle_updates_existing_robot_objects():
     world.debug = False
 
     assert world.grid is False
-    assert current_costume_source(robot._actor).endswith("robot_red.png")
+    assert current_costume_source(robot._actor) is None
+    assert current_costume_type(robot._actor) == 3
     assert current_costume_source(leaf) is None
 
 
