@@ -9,7 +9,11 @@ import miniworlds_robot.visuals as visuals
 from miniworlds_robot.config import WorldConfig
 
 
-Position = Tuple[float, float]
+Position = Tuple[int, int]
+
+
+def _int_position(position) -> tuple[int, int]:
+    return (int(position[0]), int(position[1]))
 
 
 class RobotWorld(TiledWorld):
@@ -86,7 +90,7 @@ class RobotWorld(TiledWorld):
     def _robot_positions(self) -> tuple[tuple[int, int], ...]:
         return tuple(
             sorted(
-                actor.position
+                _int_position(actor.position)
                 for actor in self.actors
                 if getattr(actor, "is_robot_body", False)
             )
@@ -113,7 +117,7 @@ class RobotWorld(TiledWorld):
     def _object_state(self) -> tuple[tuple[str, tuple[int, int]], ...]:
         return tuple(
             sorted(
-                (actor.robot_object_kind, actor.position)
+                (actor.robot_object_kind, _int_position(actor.position))
                 for actor in self.actors
                 if hasattr(actor, "robot_object_kind")
             )
@@ -121,12 +125,13 @@ class RobotWorld(TiledWorld):
 
     @staticmethod
     def _object_target_state(objects) -> tuple[tuple[str, tuple[int, int]], ...]:
-        return tuple(sorted((obj.kind, obj.position) for obj in objects))
+        return tuple(
+            sorted((obj.kind, _int_position(obj.position)) for obj in objects)
+        )
 
 
 class RobotObject(Actor):
     blocks_robot = False
-    collectable = False
     costume_color = (255, 255, 255, 255)
     robot_object_kind = "object"
     normal_costume_factory = None
@@ -161,7 +166,6 @@ class Mushroom(RobotObject):
 
 
 class Leaf(RobotObject):
-    collectable = True
     costume_color = (74, 159, 65, 255)
     robot_object_kind = "leaf"
     normal_costume_factory = staticmethod(visuals.make_leaf_surface)

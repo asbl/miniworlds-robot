@@ -11,7 +11,9 @@ from miniworlds_robot import (
     Loader,
     ObjectConfig,
     RobotConfig,
+    TargetConfig,
     WorldConfig,
+    load,
     load_robot,
     load_world,
     load_world_config_from_url,
@@ -93,6 +95,12 @@ def test_task_can_start_in_debug_mode():
     assert world.debug is True
     assert world.grid is True
     assert current_costume_source(robot._actor) == robot._actor.robot_config.costume
+
+
+def test_task_accepts_explicit_position():
+    world, robot = task("sequence_path", position=(2, 2))
+
+    assert robot._actor.position == (2, 2)
 
 
 def test_visual_mode_toggle_updates_existing_robot_objects():
@@ -199,6 +207,11 @@ def test_world_config_can_be_loaded_from_github_blob_url():
     )
 
 
+def test_world_config_url_loader_rejects_non_http_scheme():
+    with pytest.raises(ValueError, match="http or https"):
+        load_world_config_from_url("file:///etc/passwd")
+
+
 def test_world_config_url_loader_uses_pyodide_open_url_when_available():
     calls = []
     pyodide = types.ModuleType("pyodide")
@@ -224,6 +237,7 @@ def test_world_config_url_loader_uses_pyodide_open_url_when_available():
     urlopen.assert_not_called()
 
 
+@pytest.mark.network
 def test_world_can_be_loaded_from_published_github_repository():
     world = load_world(f"{REMOTE_WORLDS_BASE_URL}/04-loops/loops_03_square.json")
 
@@ -233,6 +247,7 @@ def test_world_can_be_loaded_from_published_github_repository():
     assert world.robot_config.target.robot_steps == 8
 
 
+@pytest.mark.network
 def test_published_github_repository_contains_concept_worlds():
     samples = {
         "01-sequences/sequence_01_straight_line.json": "sequence_01_straight_line",
@@ -282,6 +297,85 @@ def test_successful_step_moves_robot_and_counts_once():
     assert robot._actor.robot_steps == 1
 
 
+def test_can_move_is_blocked_by_a_blocking_object():
+    world = load_world(
+        WorldConfig(
+            name="blocked",
+            columns=5,
+            rows=3,
+            objects=(ObjectConfig("tree", (3, 1)),),
+            robot_abilities=frozenset({"step", "can_move"}),
+        )
+    )
+    robot = load_robot(world=world, position=(2, 1))
+
+    assert robot.can_move() is False
+
+
+def test_can_move_is_blocked_by_world_border():
+    world = load_world(
+        WorldConfig(
+            name="small",
+            columns=2,
+            rows=2,
+            robot_abilities=frozenset({"step", "can_move"}),
+        )
+    )
+    robot = load_robot(
+        RobotConfig(name="left", direction=-90),
+        world,
+        position=(0, 0),
+    )
+
+    assert robot.can_move() is False
+
+
+def test_can_move_is_true_on_free_tile():
+    world = load_world(
+        WorldConfig(
+            name="free",
+            columns=5,
+            rows=3,
+            robot_abilities=frozenset({"step", "can_move"}),
+        )
+    )
+    robot = load_robot(world=world, position=(0, 0))
+
+    assert robot.can_move() is True
+
+
+def test_can_move_requires_ability():
+    config = WorldConfig(
+        name="no-can-move",
+        robot_abilities=frozenset({"step", "turn_left"}),
+    )
+    world = load_world(config)
+    robot = load_robot(world=world, position=(0, 0))
+
+    with pytest.raises(AttributeError, match="can_move"):
+        robot.can_move()
+
+
+def test_can_move_supports_writing_a_while_loop():
+    config = WorldConfig(
+        name="walk-to-wall",
+        columns=5,
+        rows=2,
+        start_position=(0, 0),
+        robot_abilities=frozenset({"step", "can_move"}),
+    )
+    world = load_world(config)
+    robot = load_robot(world=world, position=(0, 0))
+
+    steps_taken = 0
+    while robot.can_move():
+        robot.step()
+        steps_taken += 1
+
+    assert steps_taken == 4
+    assert robot._actor.position == (4, 0)
+
+
 def test_run_keeps_tiled_world_runtime_behavior():
     world = load_world("basic")
 
@@ -297,3 +391,102 @@ def test_unknown_configs_raise_clear_errors():
 
     with pytest.raises(ValueError, match="Unknown Robot config"):
         load_robot("missing")
+
+
+def test_load_returns_world_and_robot_at_configured_start_position():
+    world, robot = load("sequence_path")
+
+    assert robot._actor in world.actors
+    assert robot._actor.position == (1, 1)
+
+
+def test_load_accepts_explicit_position_overriding_config():
+    world, robot = load("sequence_path", position=(2, 2))
+
+    assert robot._actor.position == (2, 2)
+
+
+def test_load_defaults_to_origin_when_no_start_position():
+    world, robot = load("basic")
+
+    assert robot._actor.position == (0, 0)
+
+
+def test_load_accepts_robot_config_and_debug_override():
+    world, robot = load("basic", "blue", debug=True)
+
+    assert world.debug is True
+    assert robot._actor.robot_config.name == "blue"
+
+
+@pytest.mark.network
+def test_load_reads_start_position_from_json_url():
+    world, robot = load(
+        f"{REMOTE_WORLDS_BASE_URL}/01-sequences/sequence_01_straight_line.json"
+    )
+
+    assert robot._actor.position == (1, 1)
+
+
+def test_is_solved_normalizes_float_positions_to_int():
+    config = WorldConfig(
+        name="float-pos",
+        columns=4,
+        rows=2,
+        start_position=(0, 0),
+        target=TargetConfig(robot_position=(3, 0), robot_steps=3),
+        robot_abilities=frozenset({"step"}),
+    )
+    world = load_world(config)
+    robot = load_robot(world=world, position=(0, 0))
+
+    robot.step()
+    robot.step()
+    robot.step()
+
+    assert robot._actor.position == (3, 0)
+    assert isinstance(world._robot_positions()[0][0], int)
+    assert world.is_solved() is True
+
+
+def test_is_solved_compares_object_state_across_two_kinds():
+    config = WorldConfig(
+        name="two-kinds",
+        columns=5,
+        rows=2,
+        start_position=(0, 0),
+        objects=(
+            ObjectConfig("tree", (2, 0)),
+            ObjectConfig("leaf", (3, 0)),
+        ),
+        target=TargetConfig(
+            objects=(
+                ObjectConfig("tree", (2, 0)),
+                ObjectConfig("leaf", (3, 0)),
+            )
+        ),
+    )
+    world = load_world(config)
+
+    assert world.is_solved() is True
+
+
+def test_is_solved_detects_missing_object_in_target():
+    config = WorldConfig(
+        name="missing-obj",
+        columns=5,
+        rows=2,
+        start_position=(0, 0),
+        objects=(
+            ObjectConfig("tree", (2, 0)),
+            ObjectConfig("leaf", (3, 0)),
+        ),
+        target=TargetConfig(
+            objects=(
+                ObjectConfig("tree", (2, 0)),
+            )
+        ),
+    )
+    world = load_world(config)
+
+    assert world.is_solved() is False

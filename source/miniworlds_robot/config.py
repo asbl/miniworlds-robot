@@ -41,6 +41,7 @@ class WorldConfig:
     robot_abilities: frozenset[str] = field(
         default_factory=lambda: frozenset({"step", "turn_left", "turn_right"})
     )
+    start_position: Tuple[int, int] | None = None
 
 
 WORLD_CONFIGS: Mapping[str, WorldConfig] = {
@@ -49,30 +50,35 @@ WORLD_CONFIGS: Mapping[str, WorldConfig] = {
         name="sequence_path",
         columns=6,
         rows=4,
+        start_position=(1, 1),
         target=TargetConfig(robot_position=(4, 2), robot_direction=90, robot_steps=4),
     ),
     "variables_path": WorldConfig(
         name="variables_path",
         columns=6,
         rows=4,
+        start_position=(0, 1),
         target=TargetConfig(robot_position=(3, 1), robot_direction=-90, robot_steps=5),
     ),
     "function_path": WorldConfig(
         name="function_path",
         columns=6,
         rows=4,
+        start_position=(1, 2),
         target=TargetConfig(robot_position=(1, 2), robot_direction=-90, robot_steps=4),
     ),
     "loop_square": WorldConfig(
         name="loop_square",
         columns=6,
         rows=6,
+        start_position=(1, 1),
         target=TargetConfig(robot_position=(1, 1), robot_direction=90, robot_steps=8),
     ),
     "leaf_line": WorldConfig(
         name="leaf_line",
         columns=7,
         rows=3,
+        start_position=(0, 1),
         objects=(
             ObjectConfig("leaf", (1, 1)),
             ObjectConfig("leaf", (3, 1)),
@@ -87,6 +93,7 @@ WORLD_CONFIGS: Mapping[str, WorldConfig] = {
         name="obstacle_garden",
         columns=7,
         rows=5,
+        start_position=(2, 1),
         objects=(
             ObjectConfig("tree", (3, 1)),
             ObjectConfig("mushroom", (3, 2)),
