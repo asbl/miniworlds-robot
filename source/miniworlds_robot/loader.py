@@ -8,7 +8,7 @@ from urllib.request import urlopen
 
 from miniworlds_robot.config import ROBOT_CONFIGS, WORLD_CONFIGS, RobotConfig, WorldConfig
 from miniworlds_robot.config import ObjectConfig, TargetConfig
-from miniworlds_robot.robot import Robot, create_robot
+from miniworlds_robot.robot import Robot, _create_robot
 from miniworlds_robot.world import Leaf, Mushroom, Position, RobotWorld, Tree
 
 
@@ -137,6 +137,10 @@ def world_config_from_json(data: str | bytes | dict[str, Any]) -> WorldConfig:
         ):
             raise ValueError("robot_abilities must be a list of strings")
         changes["robot_abilities"] = frozenset(robot_abilities)
+    if "start_position" in data and data["start_position"] is not None:
+        changes["start_position"] = _position_from_json(
+            data["start_position"], "start_position"
+        )
     return replace(config, **changes)
 
 
@@ -156,6 +160,8 @@ def load_world_config_from_url(url: str) -> WorldConfig:
 
     GitHub ``/blob/`` URLs are accepted and converted to their raw equivalent.
     """
+    if not _is_url(url):
+        raise ValueError(f"URL must use http or https scheme, got {url!r}")
     raw_url = _github_blob_to_raw_url(url)
     return world_config_from_json(_read_url_text(raw_url))
 
@@ -200,10 +206,34 @@ def load_robot(
 ) -> Robot:
     if world is None:
         world = load_world()
-    return create_robot(_resolve_robot_config(config), world, position)
+    return _create_robot(_resolve_robot_config(config), world, position)
+
+
+def load(
+    config: str | WorldConfig = "basic",
+    robot: str | RobotConfig = "standard",
+    *,
+    position: Position | None = None,
+    **overrides,
+) -> tuple[RobotWorld, Robot]:
+    """Create a robot world and its robot in one call.
+
+    The robot is placed at ``position`` if given, otherwise at the world's
+    configured ``start_position`` (falling back to ``(0, 0)``).
+    Returns ``(world, robot)``.
+    """
+    world = load_world(config, **overrides)
+    start = (
+        position
+        if position is not None
+        else (world.robot_config.start_position or (0, 0))
+    )
+    robot_actor = load_robot(robot, world, position=start)
+    return world, robot_actor
 
 
 class Loader:
+    load = staticmethod(load)
     load_world = staticmethod(load_world)
     load_robot = staticmethod(load_robot)
     load_world_config_from_url = staticmethod(load_world_config_from_url)

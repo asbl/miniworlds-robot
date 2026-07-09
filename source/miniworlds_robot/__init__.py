@@ -1,6 +1,7 @@
 from miniworlds_robot.config import ObjectConfig, RobotConfig, TargetConfig, WorldConfig
 from miniworlds_robot.loader import (
     Loader,
+    load,
     load_robot,
     load_world,
     load_world_config_from_url,
@@ -21,6 +22,7 @@ __all__ = [
     "TargetConfig",
     "Tree",
     "WorldConfig",
+    "load",
     "load_robot",
     "load_world",
     "load_world_config_from_url",

@@ -40,6 +40,7 @@ class Robot:
         "turn_right": "_turn_right",
         "on_leaf": "_on_leaf",
         "remove_leaf": "_remove_leaf",
+        "can_move": "_can_move",
     }
 
     def __init__(self, actor: _RobotBody, world: RobotWorld):
@@ -57,14 +58,20 @@ class Robot:
     def _has_ability(self, name: str) -> bool:
         return name in self._world.robot_abilities
 
-    def _step(self):
+    def _next_step_is_blocked(self) -> bool:
         destination = self._actor.sensor_manager.get_destination(
             self._actor.position, self._actor.direction, 1
         )
-        if self._world.is_blocked(destination):
+        return self._world.is_blocked(destination)
+
+    def _step(self):
+        if self._next_step_is_blocked():
             return self._actor
         self._actor.robot_steps += 1
         return self._actor.move(1)
+
+    def _can_move(self) -> bool:
+        return not self._next_step_is_blocked()
 
     def _turn_left(self):
         return self._actor.turn_left(90)
@@ -87,5 +94,5 @@ class Robot:
         return False
 
 
-def create_robot(config: RobotConfig, world: RobotWorld, position: Position = (0, 0)) -> Robot:
+def _create_robot(config: RobotConfig, world: RobotWorld, position: Position = (0, 0)) -> Robot:
     return Robot(_RobotBody(position, world=world, config=config), world)

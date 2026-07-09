@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "miniworlds-robot"
-version = "0.1.4"
+version = "0.1.5"
 description = "Actor-based robot worlds for miniworlds"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
 dependencies = [
-    "miniworlds",
+    "miniworlds>=4.3",
 ]
 authors = [
     { name = "Andreas Siebel" },
